@@ -1,0 +1,17 @@
+CREATE TABLE Players (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Login TEXT NOT NULL UNIQUE,
+    Password TEXT NOT NULL
+);
+
+CREATE TABLE Games (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    HostId INTEGER NOT NULL,
+    GuestId INTEGER,
+    Status TEXT NOT NULL,
+    GridState TEXT,
+    WinnerId INTEGER,
+    FOREIGN KEY (HostId) REFERENCES Players(Id),
+    FOREIGN KEY (GuestId) REFERENCES Players(Id),
+    FOREIGN KEY (WinnerId) REFERENCES Players(Id)
+);

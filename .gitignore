@@ -1,0 +1,61 @@
+# Environment Variables
+.env
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Auto-generated files
+GeneratedFiles/
+*.generated.cs
+*.Designer.cs
+*.g.cs
+*.g.i.cs
+
+# Build artifacts
+bin/
+obj/
+
+# Logs
+*.log
+
+# System-specific files
+.DS_Store
+Thumbs.db
+
+# Visual Studio specific
+.vs/
+.vscode/
+
+# Database files
+*.mdf
+*.ldf
+*.sqlite
+*.db
+
+# Entity Framework Core migrations
+Migrations/
+
+# Runtime files
+*.pidb
+*.pdb
+
+# ASP.NET Core specific
+wwwroot/
+
+# Node.js
+node_modules/
+
+# JetBrains Rider specific
+.idea/
+
+# Other backups
+*.bak
+*.swp
+
+# Temporary files
+*.tmp
+*.temp
