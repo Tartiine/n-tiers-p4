@@ -1,0 +1,77 @@
+@page "/login"
+
+<h3>Login</h3>
+
+<div class="form-group">
+    <label for="username">Username</label>
+    <input type="text" id="username" class="form-control" @bind="username" />
+</div>
+
+<div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" id="password" class="form-control" @bind="password" />
+</div>
+
+<button class="btn btn-primary" @onclick="HandleLogin">Login</button>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-3">@errorMessage</div>
+}
+
+@code {
+    private string username = string.Empty;
+    private string password = string.Empty;
+    private string errorMessage = string.Empty;
+
+    @inject HttpClient Http
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                errorMessage = "Username and password cannot be empty.";
+                return;
+            }
+
+            var request = new { Login = username, Password = password };
+            Console.WriteLine($"Sending login request: {request.Login}, {request.Password}");
+
+            var response = await Http.PostAsJsonAsync("auth/login", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (result != null)
+                {
+                    Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
+                    errorMessage = string.Empty;
+
+                    // Redirect or show success message here
+                    return;
+                }
+
+                errorMessage = "Invalid server response.";
+            }
+            else
+            {
+                errorMessage = $"Login failed with status code: {response.StatusCode}";
+                Console.WriteLine(await response.Content.ReadAsStringAsync()); // Log server response
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred. Please try again.";
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+    }
+
+
+    public class LoginResponse
+    {
+        public string Message { get; set; }
+        public int PlayerId { get; set; }
+    }
+}
