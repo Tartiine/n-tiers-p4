@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Api.Data;
-using Api.Models;
+using Database;
+using Database.Models; 
+
 
 namespace Api.Controllers
 {

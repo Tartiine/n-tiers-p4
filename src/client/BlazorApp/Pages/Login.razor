@@ -1,4 +1,6 @@
 @page "/login"
+@inject HttpClient Http
+@inject NavigationManager Navigation
 
 <h3>Login</h3>
 
@@ -12,7 +14,7 @@
     <input type="password" id="password" class="form-control" @bind="password" />
 </div>
 
-<button class="btn btn-primary" @onclick="HandleLogin">Login</button>
+<button class="btn btn-primary mt-3" @onclick="HandleLogin" disabled="@isSubmitting">Login</button>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
@@ -23,23 +25,22 @@
     private string username = string.Empty;
     private string password = string.Empty;
     private string errorMessage = string.Empty;
-
-    @inject HttpClient Http
+    private bool isSubmitting = false;
 
     private async Task HandleLogin()
     {
+        errorMessage = string.Empty; // Clear any previous error
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Username and password cannot be empty.";
+            return;
+        }
+
+        isSubmitting = true; // Disable button while processing
         try
         {
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            {
-                errorMessage = "Username and password cannot be empty.";
-                return;
-            }
-
             var request = new { Login = username, Password = password };
-            Console.WriteLine($"Sending login request: {request.Login}, {request.Password}");
-
-            var response = await Http.PostAsJsonAsync("auth/login", request);
+            var response = await Http.PostAsJsonAsync("api/auth/login", request);
 
             if (response.IsSuccessStatusCode)
             {
@@ -47,18 +48,18 @@
                 if (result != null)
                 {
                     Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
-                    errorMessage = string.Empty;
-
-                    // Redirect or show success message here
-                    return;
+                    Navigation.NavigateTo("/list"); // Redirect to the game list page
                 }
-
-                errorMessage = "Invalid server response.";
+                else
+                {
+                    errorMessage = "Invalid server response.";
+                }
             }
             else
             {
-                errorMessage = $"Login failed with status code: {response.StatusCode}";
-                Console.WriteLine(await response.Content.ReadAsStringAsync()); // Log server response
+                errorMessage = $"Login failed: {response.StatusCode}";
+                var serverMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Server Response: {serverMessage}");
             }
         }
         catch (Exception ex)
@@ -66,8 +67,11 @@
             errorMessage = "An error occurred. Please try again.";
             Console.WriteLine($"Exception: {ex.Message}");
         }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
-
 
     public class LoginResponse
     {
