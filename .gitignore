@@ -34,7 +34,6 @@ Thumbs.db
 *.mdf
 *.ldf
 *.sqlite
-*.db
 
 # Runtime files
 *.pidb
