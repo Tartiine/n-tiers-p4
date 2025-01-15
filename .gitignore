@@ -36,9 +36,6 @@ Thumbs.db
 *.sqlite
 *.db
 
-# Entity Framework Core migrations
-Migrations/
-
 # Runtime files
 *.pidb
 *.pdb
