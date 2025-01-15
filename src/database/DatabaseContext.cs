@@ -15,6 +15,13 @@ namespace Database
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+                modelBuilder.Entity<Game>()
+                .HasKey(g => g.Id); 
+
+                modelBuilder.Entity<Game>()
+                .Property(g => g.Id)
+                .ValueGeneratedOnAdd(); 
+
             modelBuilder.Entity<Game>()
                 .HasOne(g => g.Host)
                 .WithMany()

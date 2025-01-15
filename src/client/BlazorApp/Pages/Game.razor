@@ -1,0 +1,39 @@
+@page "/game/{gameId:int}"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<h3>Game Details</h3>
+
+@if (game == null)
+{
+    <p>Loading game...</p>
+}
+else
+{
+    <div>
+        <p><strong>Game ID:</strong> @game.Id</p>
+        <p><strong>Host:</strong> @game.HostName</p>
+        <p><strong>Guest:</strong> @game.GuestName</p>
+        <p><strong>Status:</strong> @game.Status</p>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int gameId { get; set; }
+
+    private GameDto game;
+
+    protected override async Task OnInitializedAsync()
+    {
+        game = await Http.GetFromJsonAsync<GameDto>($"api/game/{gameId}");
+    }
+
+    public class GameDto
+    {
+        public int Id { get; set; }
+        public string HostName { get; set; }
+        public string GuestName { get; set; }
+        public string Status { get; set; }
+    }
+}

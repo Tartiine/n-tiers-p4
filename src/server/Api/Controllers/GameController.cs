@@ -1,37 +1,35 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Database;
-using Database.Models;
+using Api.Services;
+using Api.Dtos;
 
 namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class GameController(DatabaseContext context) : ControllerBase
+    public class GameController(GameService gameService) : ControllerBase
     {
-        private readonly DatabaseContext _context = context;
+        private readonly GameService _gameService = gameService;
 
         [HttpGet]
         public async Task<IActionResult> GetAllGames()
         {
-            var games = await _context.Games.ToListAsync();
+            var games = await _gameService.GetAllGamesAsync();
             return Ok(games);
         }
 
         [HttpGet("status/{status}")]
         public async Task<IActionResult> GetGamesByStatus(string status)
         {
-            var games = await _context.Games.Where(g => g.Status == status).ToListAsync();
+            var games = await _gameService.GetGamesByStatusAsync(status);
             return Ok(games);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetGameById(int id)
         {
-            var game = await _context.Games.FindAsync(id);
-
+            var game = await _gameService.GetGameByIdAsync(id);
             if (game == null)
-                return NotFound();
+                return NotFound(new { Message = "Game not found" });
 
             return Ok(game);
         }
@@ -39,48 +37,46 @@ namespace Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateGame([FromBody] CreateGameRequest request)
         {
-            var game = new Game
+            if (!ModelState.IsValid)
             {
-                HostId = request.HostId,
-                Status = "AwaitingGuest"
-            };
+                Console.WriteLine("Model state is invalid");
+                return BadRequest(ModelState);
+            }
 
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync();
+            Console.WriteLine($"Attempting to create game with HostId: {request.HostId}");
 
-            return CreatedAtAction(nameof(GetGameById), new { id = game.Id }, game);
+            var response = await _gameService.CreateGameAsync(request.HostId);
+            if (!response.Success)
+            {
+                Console.WriteLine($"Failed to create game: {response.Message}");
+                return BadRequest(new { Message = response.Message });
+            }
+
+            Console.WriteLine($"Game created with ID: {response.Data}");
+            return CreatedAtAction(nameof(GetGameById), new { id = response.Data }, response.Data);
         }
+
 
         [HttpPost("{id}/join")]
         public async Task<IActionResult> JoinGame(int id, [FromBody] JoinGameRequest request)
         {
-            var game = await _context.Games.FindAsync(id);
+            var response = await _gameService.JoinGameAsync(id, request.GuestId);
+            if (!response.Success)
+                return BadRequest(new { Message = response.Message });
 
-            if (game == null || game.Status != "AwaitingGuest")
-                return BadRequest(new { Message = "Game not available to join." });
-
-            game.GuestId = request.GuestId;
-            game.Status = "InProgress";
-
-            await _context.SaveChangesAsync();
-            return Ok(game);
+            return Ok(response.Data);
         }
 
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateGameStatus(int id, [FromBody] UpdateGameStatusRequest request)
         {
-            var game = await _context.Games.FindAsync(id);
+            var response = await _gameService.UpdateGameStatusAsync(id, request.Status);
+            if (!response.Success)
+                return BadRequest(new { Message = response.Message });
 
-            if (game == null)
-                return NotFound();
-
-            game.Status = request.Status;
-
-            await _context.SaveChangesAsync();
-            return NoContent();
+            return Ok(new { Message = response.Data });
         }
     }
-
     public class CreateGameRequest
     {
         public int HostId { get; set; }

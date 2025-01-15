@@ -1,6 +1,7 @@
 namespace Database.Models
 {
     public class Game{
+
         public int Id { get; set; }
         public int HostId { get; set; }
         public int? GuestId { get; set; } 
@@ -8,6 +9,11 @@ namespace Database.Models
 
         public Player Host { get; set; }
         public Player Guest { get; set; }
+
+        public void StartGame()
+        {
+            Status = "InProgress";
+        }
     }
 
 }

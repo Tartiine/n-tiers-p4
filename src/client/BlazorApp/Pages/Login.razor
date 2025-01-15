@@ -1,6 +1,7 @@
 @page "/login"
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 
 <h3>Login</h3>
 
@@ -36,7 +37,7 @@
             return;
         }
 
-        isSubmitting = true; // Disable button while processing
+        isSubmitting = true; 
         try
         {
             var request = new { Login = username, Password = password };
@@ -48,7 +49,8 @@
                 if (result != null)
                 {
                     Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
-                    Navigation.NavigateTo("/list"); // Redirect to the game list page
+                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "PlayerId", result.PlayerId.ToString());
+                    Navigation.NavigateTo("/list"); 
                 }
                 else
                 {

@@ -56,3 +56,5 @@ node_modules/
 # Temporary files
 *.tmp
 *.temp
+src/database/database.db-shm
+src/database/database.db-wal

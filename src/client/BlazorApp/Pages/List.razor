@@ -1,5 +1,6 @@
 @page "/list"
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
 <h3 class="text-center my-3">My Games</h3>
@@ -30,7 +31,6 @@ else
                 </div>
                 <div class="d-flex">
                     <button class="btn btn-primary me-2" @onclick="() => JoinGame(game.Id)">Join</button>
-                    <button class="btn btn-danger" @onclick="() => DeleteGame(game.Id)">Delete</button>
                 </div>
             </div>
         }
@@ -78,22 +78,25 @@ else
         }
     }
 
+
     private async Task CreateGame()
     {
         try
         {
-            int currentPlayerId = await GetCurrentPlayerId(); // Use PlayerId
+            int currentPlayerId = await GetCurrentPlayerId();
 
             var response = await Http.PostAsJsonAsync("api/game", new { HostId = currentPlayerId });
 
             if (response.IsSuccessStatusCode)
             {
-                var game = await response.Content.ReadFromJsonAsync<GameDto>();
-                games.Add(game);
+                var gameId = await response.Content.ReadFromJsonAsync<int>(); // Parse the game ID
+                Console.WriteLine($"Game created with ID: {gameId}");
+                Navigation.NavigateTo($"/game/{gameId}"); // Navigate to the game page
             }
             else
             {
-                Console.WriteLine("Failed to create game");
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Failed to create game: {response.StatusCode}, {errorMessage}");
             }
         }
         catch (Exception ex)
@@ -102,30 +105,12 @@ else
         }
     }
 
+
     private async Task JoinGame(int gameId)
     {
         Console.WriteLine($"Joining game with ID: {gameId}");
         // Logic to join the game
-    }
-
-    private async Task DeleteGame(int gameId)
-    {
-        try
-        {
-            var response = await Http.DeleteAsync($"api/game/{gameId}");
-            if (response.IsSuccessStatusCode)
-            {
-                games = games.Where(g => g.Id != gameId).ToList();
-            }
-            else
-            {
-                Console.WriteLine("Failed to delete game");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error deleting game: {ex.Message}");
-        }
+        Navigation.NavigateTo($"/game/{gameId}");
     }
 
     public class GameDto
