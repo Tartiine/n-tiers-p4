@@ -40,9 +40,6 @@ Thumbs.db
 *.pidb
 *.pdb
 
-# ASP.NET Core specific
-wwwroot/
-
 # Node.js
 node_modules/
 
