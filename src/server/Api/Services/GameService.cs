@@ -18,87 +18,33 @@ namespace Api.Services
                 {
                     Id = g.Id,
                     HostName = g.Host.Login,
-                    GuestName = g.Guest != null ? g.Guest.Login : "Awaiting Guest",
-                    Status = g.Status
+                    GuestName = g.Guest != null ? g.Guest.Login : "None",
+                    Status = g.Status.ToString() 
                 })
                 .ToListAsync();
         }
 
-        public async Task<ServiceResponse<int>> CreateGameAsync(int hostId)
-        {
-            var host = await _context.Players.FindAsync(hostId);
-            if (host == null)
-            {
-                return new ServiceResponse<int> { Success = false, Message = "Host not found." };
-            }
-
-            var game = new Game
-            {
-                Host = host,
-                Status = "AwaitingGuest"
-            };
-
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync(); // This generates the Id
-
-            return new ServiceResponse<int>
-            {
-                Success = true,
-                Data = game.Id // Return the generated Id
-            };
-        }
-
-
-        public async Task<ServiceResponse<GameDto>> JoinGameAsync(int gameId, int guestId)
-        {
-            var game = await _context.Games.Include(g => g.Host).Include(g => g.Guest).FirstOrDefaultAsync(g => g.Id == gameId);
-            if (game == null || game.Status != "AwaitingGuest")
-            {
-                return new ServiceResponse<GameDto>
-                {
-                    Success = false,
-                    Message = "Game not available to join."
-                };
-            }
-
-            var guest = await _context.Players.FindAsync(guestId);
-            if (guest == null)
-            {
-                return new ServiceResponse<GameDto>
-                {
-                    Success = false,
-                    Message = "Guest not found."
-                };
-            }
-
-            game.Guest = guest;
-            game.Status = "InProgress";
-
-            await _context.SaveChangesAsync();
-
-            return new ServiceResponse<GameDto>
-            {
-                Success = true,
-                Data = new GameDto
-                {
-                    HostName = game.Host.Login,
-                    GuestName = game.Guest.Login,
-                    Status = game.Status
-                }
-            };
-        }
-
         public async Task<ServiceResponse<List<GameDto>>> GetGamesByStatusAsync(string status)
         {
+            if (!Enum.TryParse<GameStatus>(status, true, out var gameStatus))
+            {
+                return new ServiceResponse<List<GameDto>>
+                {
+                    Success = false,
+                    Message = "Invalid game status."
+                };
+            }
+
             var games = await _context.Games
                 .Include(g => g.Host)
                 .Include(g => g.Guest)
-                .Where(g => g.Status == status)
+                .Where(g => g.Status == gameStatus)
                 .Select(g => new GameDto
                 {
+                    Id = g.Id,
                     HostName = g.Host.Login,
-                    GuestName = g.Guest != null ? g.Guest.Login : "Awaiting Guest",
-                    Status = g.Status
+                    GuestName = g.Guest != null ? g.Guest.Login : "None",
+                    Status = g.Status.ToString()
                 })
                 .ToListAsync();
 
@@ -111,6 +57,15 @@ namespace Api.Services
 
         public async Task<ServiceResponse<string>> UpdateGameStatusAsync(int id, string status)
         {
+            if (!Enum.TryParse<GameStatus>(status, true, out var gameStatus))
+            {
+                return new ServiceResponse<string>
+                {
+                    Success = false,
+                    Message = "Invalid game status."
+                };
+            }
+
             var game = await _context.Games.FindAsync(id);
             if (game == null)
             {
@@ -121,7 +76,7 @@ namespace Api.Services
                 };
             }
 
-            game.Status = status;
+            game.Status = gameStatus;
             await _context.SaveChangesAsync();
 
             return new ServiceResponse<string>
@@ -133,7 +88,10 @@ namespace Api.Services
 
         public async Task<ServiceResponse<GameDto>> GetGameByIdAsync(int id)
         {
+            // Fetch the game, including Host, Guest, Grid, and Cells
             var game = await _context.Games
+                .Include(g => g.Grid)
+                    .ThenInclude(grid => grid.Cells)
                 .Include(g => g.Host)
                 .Include(g => g.Guest)
                 .FirstOrDefaultAsync(g => g.Id == id);
@@ -147,20 +105,156 @@ namespace Api.Services
                 };
             }
 
+            // Map to GameDto including Grid and Cells
             return new ServiceResponse<GameDto>
             {
                 Success = true,
                 Data = new GameDto
                 {
-                    HostName = game.Host.Login,
-                    GuestName = game.Guest?.Login ?? "Awaiting Guest",
-                    Status = game.Status
+                    Id = game.Id,
+                    HostName = game.Host?.Login ?? "No host",
+                    GuestName = game.Guest?.Login ?? "Waiting for guest...",
+                    Status = game.Status.ToString(),
+                    Grid = new GridDto
+                    {
+                        Rows = game.Grid.Rows,
+                        Columns = game.Grid.Columns,
+                        Cells = game.Grid.Cells.Select(cell => new CellDto
+                        {
+                            Token = cell.Token != null ? new TokenDto { Color = cell.Token.Color } : null
+                        }).ToList()
+                    }
                 }
             };
         }
 
-    }
 
+        public async Task<ServiceResponse<string>> PlayTurnAsync(int gameId, int playerId, int column)
+        {
+            var game = await _context.Games
+                .Include(g => g.Grid)
+                    .ThenInclude(grid => grid.Cells)
+                .FirstOrDefaultAsync(g => g.Id == gameId);
+
+            if (game == null)
+                return new ServiceResponse<string> { Success = false, Message = "Game not found." };
+
+            if (game.Status != GameStatus.InProgress) 
+                return new ServiceResponse<string> { Success = false, Message = "Game is not in progress." };
+
+            var player = await _context.Players.FindAsync(playerId);
+            if (player == null)
+                return new ServiceResponse<string> { Success = false, Message = "Player not found." };
+
+            var token = new Token { Color = playerId == game.HostId ? "Red" : "Yellow" };
+
+            var success = game.Grid.DropToken(column, token);
+            if (!success)
+                return new ServiceResponse<string> { Success = false, Message = "Invalid move. Column is full or does not exist." };
+
+            if (CheckWin(game.Grid))
+            {
+                game.Status = GameStatus.Finished;
+                _context.Update(game);
+                await _context.SaveChangesAsync();
+                return new ServiceResponse<string> { Success = true, Data = "Player wins!" };
+            }
+
+            await _context.SaveChangesAsync();
+            return new ServiceResponse<string> { Success = true, Data = "Turn played successfully." };
+        }
+
+        private static bool CheckWin(Grid grid)
+        {
+            // Implement win-checking logic
+            return false;
+        }
+        public async Task<ServiceResponse<GameDto>> JoinOrCreateGameAsync(int? gameId, int hostId)
+        {
+            if (gameId.HasValue)
+            {
+                return await GetGameByIdAsync(gameId.Value);
+            }
+            else
+            {
+
+                var gameResponse = await CreateNewGameAsync(hostId);
+
+                if (!gameResponse.Success)
+                {
+                    return new ServiceResponse<GameDto>
+                    {
+                        Success = false,
+                        Message = gameResponse.Message
+                    };
+                }
+
+                return new ServiceResponse<GameDto>
+                {
+                    Success = true,
+                    Data = MapToGameDto(gameResponse.Data)
+                };
+            }
+        }
+
+
+        private static GameDto MapToGameDto(Game game)
+        {
+            return new GameDto
+            {
+                Id = game.Id,
+                HostName = game.Host?.Login ?? "No host",
+                GuestName = game.Guest?.Login ?? "Waiting for guest...",
+                Status = game.Status.ToString(),
+                Grid = new GridDto
+                {
+                    Rows = game.Grid.Rows,
+                    Columns = game.Grid.Columns,
+                    Cells = [.. game.Grid.Cells.Select(cell => new CellDto
+                    {
+                        Token = cell.Token != null ? new TokenDto { Color = cell.Token.Color } : null
+                    })]
+                }
+            };
+        }
+
+
+        public async Task<ServiceResponse<Game>> CreateNewGameAsync(int hostId)
+        {
+            var grid = new Grid
+            {
+                Rows = 6,
+                Columns = 7,
+                Cells = Enumerable.Range(0, 6 * 7).Select(index => new Cell
+                {
+                    Row = index / 7,
+                    Column = index % 7
+                }).ToList()
+            };
+
+            _context.Grids.Add(grid);
+            await _context.SaveChangesAsync();
+
+            var game = new Game
+            {
+                Grid = grid,
+                HostId = hostId,
+                Status = GameStatus.AwaitingGuest
+            };
+
+            _context.Games.Add(game);
+            await _context.SaveChangesAsync();
+
+            return new ServiceResponse<Game>
+            {
+                Success = true,
+                Data = game
+            };
+        }
+
+
+
+    }
     public class ServiceResponse<T>
     {
         public bool Success { get; set; }

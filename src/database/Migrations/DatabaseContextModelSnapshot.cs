@@ -16,10 +16,336 @@ namespace database.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
 
+            modelBuilder.Entity("Database.Models.Cell", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Column")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GridId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Row")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TokenId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GridId");
+
+                    b.HasIndex("TokenId");
+
+                    b.ToTable("Cells");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 1
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 2
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 3
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 4
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Column = 0,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Column = 1,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Column = 2,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Column = 3,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Column = 4,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Column = 5,
+                            GridId = 1,
+                            Row = 5
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Column = 6,
+                            GridId = 1,
+                            Row = 5
+                        });
+                });
+
             modelBuilder.Entity("Database.Models.Game", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GridId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("GuestId")
@@ -28,15 +354,22 @@ namespace database.Migrations
                     b.Property<int>("HostId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("PlayerId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GridId");
+
                     b.HasIndex("GuestId");
 
                     b.HasIndex("HostId");
+
+                    b.HasIndex("PlayerId");
 
                     b.ToTable("Games");
 
@@ -44,9 +377,34 @@ namespace database.Migrations
                         new
                         {
                             Id = 1,
-                            GuestId = 2,
+                            GridId = 1,
                             HostId = 1,
                             Status = "AwaitingGuest"
+                        });
+                });
+
+            modelBuilder.Entity("Database.Models.Grid", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Columns")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Rows")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Grids");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Columns = 7,
+                            Rows = 6
                         });
                 });
 
@@ -83,8 +441,46 @@ namespace database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Database.Models.Token", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Token");
+                });
+
+            modelBuilder.Entity("Database.Models.Cell", b =>
+                {
+                    b.HasOne("Database.Models.Grid", "Grid")
+                        .WithMany("Cells")
+                        .HasForeignKey("GridId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Database.Models.Token", "Token")
+                        .WithMany()
+                        .HasForeignKey("TokenId");
+
+                    b.Navigation("Grid");
+
+                    b.Navigation("Token");
+                });
+
             modelBuilder.Entity("Database.Models.Game", b =>
                 {
+                    b.HasOne("Database.Models.Grid", "Grid")
+                        .WithMany()
+                        .HasForeignKey("GridId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Database.Models.Player", "Guest")
                         .WithMany()
                         .HasForeignKey("GuestId")
@@ -93,12 +489,28 @@ namespace database.Migrations
                     b.HasOne("Database.Models.Player", "Host")
                         .WithMany()
                         .HasForeignKey("HostId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.SetNull)
                         .IsRequired();
+
+                    b.HasOne("Database.Models.Player", null)
+                        .WithMany("Games")
+                        .HasForeignKey("PlayerId");
+
+                    b.Navigation("Grid");
 
                     b.Navigation("Guest");
 
                     b.Navigation("Host");
+                });
+
+            modelBuilder.Entity("Database.Models.Grid", b =>
+                {
+                    b.Navigation("Cells");
+                });
+
+            modelBuilder.Entity("Database.Models.Player", b =>
+                {
+                    b.Navigation("Games");
                 });
 #pragma warning restore 612, 618
         }

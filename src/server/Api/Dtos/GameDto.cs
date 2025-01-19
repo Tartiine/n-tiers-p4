@@ -6,6 +6,6 @@ namespace Api.Dtos
         public string HostName { get; set; }
         public string GuestName { get; set; }
         public string Status { get; set; }
-        public bool Success { get; internal set; }
+        public GridDto Grid { get; set; }
     }
 }

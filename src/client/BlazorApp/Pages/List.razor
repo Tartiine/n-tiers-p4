@@ -30,7 +30,7 @@ else
                     <span><strong>Status:</strong> @game.Status</span>
                 </div>
                 <div class="d-flex">
-                    <button class="btn btn-primary me-2" @onclick="() => JoinGame(game.Id)">Join</button>
+                    <button class="btn btn-primary me-2" @onclick="() => JoinOrCreateGame(game.Id)">Join</button>
                 </div>
             </div>
         }
@@ -38,11 +38,12 @@ else
 }
 
 <div class="text-center mt-4">
-    <button class="btn btn-success" @onclick="CreateGame">Create Game</button>
+    <button class="btn btn-success" @onclick="() => JoinOrCreateGame(null)">Create Game</button>
 </div>
 
 @code {
     private List<GameDto> games = new();
+    private string errorMessage;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -79,38 +80,47 @@ else
     }
 
 
-    private async Task CreateGame()
+    private async Task JoinOrCreateGame(int? gameId = null)
     {
         try
         {
+            Console.WriteLine("Attempting to retrieve PlayerId...");
             int currentPlayerId = await GetCurrentPlayerId();
+            Console.WriteLine($"Retrieved PlayerId: {currentPlayerId}");
 
-            var response = await Http.PostAsJsonAsync("api/game", new { HostId = currentPlayerId });
+            string url = gameId.HasValue
+                ? $"api/game/joinOrCreate?gameId={gameId.Value}&hostId={currentPlayerId}"
+                : $"api/game/joinOrCreate?hostId={currentPlayerId}";
 
-            if (response.IsSuccessStatusCode)
+            Console.WriteLine($"Generated request URL: {url}");
+
+            var response = await Http.GetFromJsonAsync<ApiResponse<GameDto>>(url);
+
+            if (response?.Success == true && response.Data != null)
             {
-                var gameId = await response.Content.ReadFromJsonAsync<int>(); // Parse the game ID
-                Console.WriteLine($"Game created with ID: {gameId}");
-                Navigation.NavigateTo($"/game/{gameId}"); // Navigate to the game page
+                Console.WriteLine($"Game joined or created successfully. Game ID: {response.Data.Id}");
+                Navigation.NavigateTo($"/game/{response.Data.Id}");
             }
             else
             {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Failed to create game: {response.StatusCode}, {errorMessage}");
+                errorMessage = response?.Message ?? "Failed to join or create game.";
+                Console.WriteLine($"Error: {errorMessage}");
             }
         }
         catch (Exception ex)
         {
+            errorMessage = "An error occurred while creating or joining the game.";
             Console.WriteLine($"Error: {ex.Message}");
         }
     }
 
 
-    private async Task JoinGame(int gameId)
+
+    public class ApiResponse<T>
     {
-        Console.WriteLine($"Joining game with ID: {gameId}");
-        // Logic to join the game
-        Navigation.NavigateTo($"/game/{gameId}");
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public T Data { get; set; }
     }
 
     public class GameDto

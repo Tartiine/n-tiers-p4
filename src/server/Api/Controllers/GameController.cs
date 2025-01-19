@@ -34,38 +34,6 @@ namespace Api.Controllers
             return Ok(game);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateGame([FromBody] CreateGameRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                Console.WriteLine("Model state is invalid");
-                return BadRequest(ModelState);
-            }
-
-            Console.WriteLine($"Attempting to create game with HostId: {request.HostId}");
-
-            var response = await _gameService.CreateGameAsync(request.HostId);
-            if (!response.Success)
-            {
-                Console.WriteLine($"Failed to create game: {response.Message}");
-                return BadRequest(new { Message = response.Message });
-            }
-
-            Console.WriteLine($"Game created with ID: {response.Data}");
-            return CreatedAtAction(nameof(GetGameById), new { id = response.Data }, response.Data);
-        }
-
-
-        [HttpPost("{id}/join")]
-        public async Task<IActionResult> JoinGame(int id, [FromBody] JoinGameRequest request)
-        {
-            var response = await _gameService.JoinGameAsync(id, request.GuestId);
-            if (!response.Success)
-                return BadRequest(new { Message = response.Message });
-
-            return Ok(response.Data);
-        }
 
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateGameStatus(int id, [FromBody] UpdateGameStatusRequest request)
@@ -76,6 +44,73 @@ namespace Api.Controllers
 
             return Ok(new { Message = response.Data });
         }
+
+        [HttpPost("{id}/playTurn")]
+        public async Task<IActionResult> PlayTurn(int id, [FromBody] PlayTurnRequest request)
+        {
+            var response = await _gameService.PlayTurnAsync(id, request.PlayerId, request.Column);
+
+            if (!response.Success)
+            {
+                return BadRequest(new { Message = response.Message });
+            }
+
+            return Ok(response.Data);
+        }
+
+        [HttpGet("joinOrCreate")]
+        public async Task<IActionResult> JoinOrCreate([FromQuery] int? gameId, [FromQuery] int hostId)
+        {
+            if (hostId <= 0)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = "HostId is required and must be greater than 0."
+                });
+            }
+
+            try
+            {
+                var response = await _gameService.JoinOrCreateGameAsync(gameId, hostId);
+
+                if (!response.Success)
+                {
+                    return BadRequest(new
+                    {
+                        Success = false,
+                        Message = response.Message
+                    });
+                }
+
+                return Ok(new
+                {
+                    Success = true,
+                    Data = response.Data
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Success = false,
+                    Message = "An unexpected error occurred.",
+                    Details = ex.Message
+                });
+            }
+        }
+
+
+
     }
     public class CreateGameRequest
     {
@@ -90,5 +125,11 @@ namespace Api.Controllers
     public class UpdateGameStatusRequest
     {
         public string Status { get; set; }
+    }
+
+    public class PlayTurnRequest
+    {
+        public int PlayerId { get; set; }
+        public int Column { get; set; }
     }
 }

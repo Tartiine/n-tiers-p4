@@ -1,24 +1,20 @@
 using Microsoft.EntityFrameworkCore;
-using Database; 
-using Api.Services; 
+using Database;
+using Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var solutionRoot = Directory.GetParent(Directory.GetCurrentDirectory())!.Parent!.Parent!.FullName; // Aller à la racine du projet
+// Resolve the database path
+var solutionRoot = Directory.GetParent(Directory.GetCurrentDirectory())!.Parent!.Parent!.FullName;
 var dbPath = Path.Combine(solutionRoot, "src", "database", "database.db");
 Console.WriteLine($"Resolved Database Path: {dbPath}");
 
-if (!File.Exists(dbPath))
-{
-    Console.WriteLine($"Error: Database file not found at {dbPath}. Ensure the database exists or run migrations.");
-    Environment.Exit(1); 
-}
-
+// Configure the database context
 builder.Services.AddDbContext<DatabaseContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlite($"Data Source={dbPath}")
+           .LogTo(Console.WriteLine, LogLevel.Information)); // Enable EF Core logs
 
-
-builder.Services.AddScoped<GameService>(); 
+builder.Services.AddScoped<GameService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -28,7 +24,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", corsBuilder =>
     {
-        corsBuilder.WithOrigins("http://localhost:5071") // URL du client Blazor
+        corsBuilder.WithOrigins("http://localhost:5071") // URL of Blazor client
                    .AllowAnyHeader()
                    .AllowAnyMethod()
                    .AllowCredentials();
@@ -40,9 +36,19 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<DatabaseContext>();
-    dbContext.Database.Migrate();
+    try
+    {
+        Console.WriteLine("Applying migrations...");
+        dbContext.Database.Migrate(); // Ensure database is created and up-to-date
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error during migration: {ex.Message}");
+        throw;
+    }
 }
 
+// Enable Swagger in development mode
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

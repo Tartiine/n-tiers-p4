@@ -1,20 +1,62 @@
 @page "/game/{gameId:int}"
+@using System.Text.Json
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
 
-<h3>Game Details</h3>
+<h3>Game</h3>
 
-@if (game == null)
+@if (game == null && errorMessage == null)
 {
-    <p>Loading game...</p>
+    <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        @errorMessage
+    </div>
 }
 else
 {
-    <div>
-        <p><strong>Game ID:</strong> @game.Id</p>
-        <p><strong>Host:</strong> @game.HostName</p>
-        <p><strong>Guest:</strong> @game.GuestName</p>
-        <p><strong>Status:</strong> @game.Status</p>
+    <div class="card mt-3">
+        <div class="card-body">
+            <p><strong>Game ID:</strong> @game.Id</p>
+            <p><strong>Host:</strong> @game.HostName</p>
+            <p><strong>Guest:</strong> @game.GuestName</p>
+            <p><strong>Status:</strong> @game.Status</p>
+        </div>
+    </div>
+
+    <div class="grid mt-4">
+    @if (game.Grid?.Cells != null)
+    {
+        for (int row = 0; row < game.Grid.Rows; row++)
+        {
+            <div class="row d-flex justify-content-center">
+                @for (int col = 0; col < game.Grid.Columns; col++)
+                {
+                    var index = row * game.Grid.Columns + col;
+                    var cell = game.Grid.Cells[index];
+
+                    <div class="cell"
+                        style="width: 50px; height: 50px; border: 1px solid black; background-color: @(cell.Token?.Color ?? "white")">
+                        @cell.Token?.Color ?? ""
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <p class="text-danger">Grid data is missing or invalid.</p>
+    }
+
+
+
+
     </div>
 }
 
@@ -23,10 +65,49 @@ else
     public int gameId { get; set; }
 
     private GameDto game;
+    private string errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        game = await Http.GetFromJsonAsync<GameDto>($"api/game/{gameId}");
+        try
+        {
+            Console.WriteLine($"Fetching game details for game ID: {gameId}");
+            var jsonResponse = await Http.GetStringAsync($"api/game/{gameId}");
+            Console.WriteLine($"Raw API Response: {jsonResponse}");
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true // Ensure case-insensitivity for JSON properties
+            };
+
+            var response = JsonSerializer.Deserialize<ApiResponse<GameDto>>(jsonResponse, options);
+
+            if (response?.Success == true && response.Data != null)
+            {
+                game = response.Data;
+                Console.WriteLine($"Game loaded successfully: ID={game.Id}, Rows={game.Grid?.Rows}, Columns={game.Grid?.Columns}, Cells={game.Grid?.Cells?.Count ?? 0}");
+            }
+            else
+            {
+                errorMessage = response?.Message ?? "Failed to load game data.";
+                Console.WriteLine($"Error: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while loading the game.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+
+
+
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public T Data { get; set; }
     }
 
     public class GameDto
@@ -35,5 +116,24 @@ else
         public string HostName { get; set; }
         public string GuestName { get; set; }
         public string Status { get; set; }
+        public GridDto Grid { get; set; }
+    }
+
+    public class GridDto
+    {
+        public int Rows { get; set; }
+        public int Columns { get; set; }
+        public List<CellDto> Cells { get; set; }
+    }
+
+
+    public class CellDto
+    {
+        public TokenDto Token { get; set; }
+    }
+
+    public class TokenDto
+    {
+        public string Color { get; set; }
     }
 }
