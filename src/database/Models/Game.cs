@@ -31,15 +31,29 @@ namespace Database.Models
         public bool PlayTurn(Player player, int column)
         {
             if (Status != GameStatus.InProgress)
-                throw new InvalidOperationException("Cannot play turn when game is not in progress.");
+                throw new InvalidOperationException("Cannot play turn when the game is not in progress.");
 
             if (player != Host && player != Guest)
                 throw new InvalidOperationException("Player is not part of this game.");
 
-            var token = new Token { Color = player == Host ? "Red" : "Yellow" };
+            if (column < 0 || column >= Grid.Columns)
+                throw new ArgumentOutOfRangeException(nameof(column), "Column index is out of bounds.");
 
-            return Grid.DropToken(column, token);
+            var token = new Token
+            {
+                Color = player == Host ? "Red" : "Yellow"
+            };
+
+            bool success = Grid.DropToken(column, token);
+
+            if (!success)
+            {
+                throw new InvalidOperationException($"Cannot place token in column {column}. The column is full.");
+            }
+
+            return true;
         }
+
 
 
     }

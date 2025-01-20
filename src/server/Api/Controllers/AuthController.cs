@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Database;
-using Database.Models; 
-
+using Database.Models;
 
 namespace Api.Controllers
 {
@@ -11,25 +10,36 @@ namespace Api.Controllers
     public class AuthController(DatabaseContext context) : ControllerBase
     {
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.Login) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { Message = "Login and Password are required." });
+            }
+
             try
             {
-                var player = context.Players
-                    .FirstOrDefault(p => p.Login == request.Login && p.Password == request.Password);
+                var player = await context.Players
+                    .FirstOrDefaultAsync(p => p.Login == request.Login && p.Password == request.Password);
+
                 if (player == null)
                 {
                     return Unauthorized(new { Message = "Invalid credentials" });
                 }
-                return Ok(new { Message = "Login successful", PlayerId = player.Id });
+
+                Console.WriteLine($"Player {player.Login} logged in successfully with ID {player.Id}");
+                return Ok(new
+                {
+                    Message = "Login successful",
+                    PlayerId = player.Id
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error accessing database: {ex.Message}");
-                return StatusCode(500, "Internal server error");
+                Console.WriteLine($"Error during login: {ex.Message}");
+                return StatusCode(500, new { Message = "Internal server error", Details = ex.Message });
             }
         }
-
     }
 
     public class LoginRequest

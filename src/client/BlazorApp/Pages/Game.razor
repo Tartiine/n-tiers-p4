@@ -2,6 +2,7 @@
 @using System.Text.Json
 @inject HttpClient Http
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
 <h3>Game</h3>
 
@@ -21,42 +22,46 @@ else if (errorMessage != null)
 }
 else
 {
-    <div class="card mt-3">
+    <div class="card mt-1">
         <div class="card-body">
             <p><strong>Game ID:</strong> @game.Id</p>
             <p><strong>Host:</strong> @game.HostName</p>
             <p><strong>Guest:</strong> @game.GuestName</p>
-            <p><strong>Status:</strong> @game.Status</p>
         </div>
     </div>
 
     <div class="grid mt-4">
-    @if (game.Grid?.Cells != null)
-    {
-        for (int row = 0; row < game.Grid.Rows; row++)
+        @if (game.Grid == null)
         {
-            <div class="row d-flex justify-content-center">
-                @for (int col = 0; col < game.Grid.Columns; col++)
-                {
-                    var index = row * game.Grid.Columns + col;
-                    var cell = game.Grid.Cells[index];
-
-                    <div class="cell"
-                        style="width: 50px; height: 50px; border: 1px solid black; background-color: @(cell.Token?.Color ?? "white")">
-                        @cell.Token?.Color ?? ""
-                    </div>
-                }
-            </div>
+            <p class="text-danger">Grid is null. Please check if the server response includes the grid.</p>
         }
-    }
-    else
-    {
-        <p class="text-danger">Grid data is missing or invalid.</p>
-    }
+        else if (game.Grid.Cells == null || game.Grid.Cells.Count == 0)
+        {
+            <p class="text-danger">
+                Grid data is missing or invalid.
+                Rows: @game.Grid.Rows, Columns: @game.Grid.Columns, Cell Count: @game.Grid.Cells?.Count
+            </p>
+        }
+        else
+        {
+        <div class="connect-four-grid">
+            @for (int row = 0; row < game.Grid.Rows; row++)
+            {
+                <div class="grid-row">
+                    @for (int col = 0; col < game.Grid.Columns; col++)
+                    {
+                        var currentCol = col; 
+                        var index = row * game.Grid.Columns + currentCol;
+                        var cell = game.Grid.Cells[index];
 
-
-
-
+                        <div class="grid-cell" data-column="@currentCol" @onclick="() => PlayTurn(currentCol)">
+                            <div class="token" style="background-color: @(cell.Token?.Color ?? "white")"></div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        }
     </div>
 }
 
@@ -71,13 +76,15 @@ else
     {
         try
         {
+            int currentPlayerId = await GetCurrentPlayerId();
+
             Console.WriteLine($"Fetching game details for game ID: {gameId}");
             var jsonResponse = await Http.GetStringAsync($"api/game/{gameId}");
             Console.WriteLine($"Raw API Response: {jsonResponse}");
 
             var options = new JsonSerializerOptions
             {
-                PropertyNameCaseInsensitive = true // Ensure case-insensitivity for JSON properties
+                PropertyNameCaseInsensitive = true
             };
 
             var response = JsonSerializer.Deserialize<ApiResponse<GameDto>>(jsonResponse, options);
@@ -85,6 +92,15 @@ else
             if (response?.Success == true && response.Data != null)
             {
                 game = response.Data;
+
+                // Check if the current player is part of the game
+                if (currentPlayerId != game.HostId && currentPlayerId != game.GuestId)
+                {
+                    Console.WriteLine($"Player {currentPlayerId} is not part of the game. Redirecting to login.");
+                    Navigation.NavigateTo("/login", forceLoad: true);
+                    return;
+                }
+
                 Console.WriteLine($"Game loaded successfully: ID={game.Id}, Rows={game.Grid?.Rows}, Columns={game.Grid?.Columns}, Cells={game.Grid?.Cells?.Count ?? 0}");
             }
             else
@@ -101,6 +117,79 @@ else
     }
 
 
+        private async Task<int> GetCurrentPlayerId()
+        {
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+            if (int.TryParse(playerId, out int id))
+            {
+                return id;
+            }
+            throw new Exception("PlayerId not found in local storage");
+        }
+
+        private bool isSubmitting = false;
+        
+        private async Task PlayTurn(int column)
+        {
+            if (isSubmitting) return; // Prevent multiple submissions
+            isSubmitting = true;
+
+            try
+            {
+                if (column < 0 || column > game.Grid?.Columns)
+                {
+                    errorMessage = "Invalid column selected.";
+                    Console.WriteLine($"Error: {errorMessage}");
+                    return;
+                }
+
+                int currentPlayerId = await GetCurrentPlayerId();
+                if (currentPlayerId != game.HostId && currentPlayerId != game.GuestId)
+                {
+                    errorMessage = "You are not part of this game.";
+                    Console.WriteLine($"Error: {errorMessage}");
+                    return;
+                }
+
+                Console.WriteLine($"Player {currentPlayerId} is attempting to play in column: {column}");
+
+                var response = await Http.PostAsJsonAsync($"api/game/{gameId}/playTurn", new PlayTurnRequest
+                {
+                    PlayerId = currentPlayerId,
+                    Column = column
+                });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                    if (result?.Success == true)
+                    {
+                        game = result.Data;
+                        Console.WriteLine($"Turn played successfully. Updated game status: {game.Status}");
+                        errorMessage = null;
+                    }
+                    else
+                    {
+                        errorMessage = result?.Message ?? "Failed to play the turn. An unknown error occurred.";
+                        Console.WriteLine($"Error: {errorMessage}");
+                    }
+                }
+                else
+                {
+                    errorMessage = $"Server returned error code: {response.StatusCode}.";
+                    Console.WriteLine($"Server Error: {errorMessage}");
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = "An error occurred while playing the turn.";
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+            finally
+            {
+                isSubmitting = false;
+            }
+        }
 
 
     public class ApiResponse<T>
@@ -117,6 +206,8 @@ else
         public string GuestName { get; set; }
         public string Status { get; set; }
         public GridDto Grid { get; set; }
+        public int HostId { get; set; }
+        public int? GuestId { get; set; }
     }
 
     public class GridDto
@@ -126,7 +217,6 @@ else
         public List<CellDto> Cells { get; set; }
     }
 
-
     public class CellDto
     {
         public TokenDto Token { get; set; }
@@ -135,5 +225,11 @@ else
     public class TokenDto
     {
         public string Color { get; set; }
+    }
+
+    public class PlayTurnRequest
+    {
+        public int PlayerId { get; set; }
+        public int Column { get; set; }
     }
 }

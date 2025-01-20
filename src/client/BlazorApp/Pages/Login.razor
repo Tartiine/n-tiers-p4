@@ -5,21 +5,32 @@
 
 <h3>Login</h3>
 
-<div class="form-group">
-    <label for="username">Username</label>
-    <input type="text" id="username" class="form-control" @bind="username" />
-</div>
-
-<div class="form-group">
-    <label for="password">Password</label>
-    <input type="password" id="password" class="form-control" @bind="password" />
-</div>
-
-<button class="btn btn-primary mt-3" @onclick="HandleLogin" disabled="@isSubmitting">Login</button>
-
-@if (!string.IsNullOrEmpty(errorMessage))
+@if (isCheckingSession)
 {
-    <div class="alert alert-danger mt-3">@errorMessage</div>
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Checking session...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" class="form-control" @bind="username" />
+    </div>
+
+    <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" @bind="password" />
+    </div>
+
+    <button class="btn btn-primary mt-3" @onclick="HandleLogin" disabled="@isSubmitting">Login</button>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger mt-3">@errorMessage</div>
+    }
 }
 
 @code {
@@ -27,6 +38,29 @@
     private string password = string.Empty;
     private string errorMessage = string.Empty;
     private bool isSubmitting = false;
+    private bool isCheckingSession = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("Checking session...");
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+            if (!string.IsNullOrEmpty(playerId))
+            {
+                Console.WriteLine($"Session found! Redirecting to /list. PlayerId: {playerId}");
+                Navigation.NavigateTo("/list");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error while checking session: {ex.Message}");
+        }
+        finally
+        {
+            isCheckingSession = false;
+        }
+    }
 
     private async Task HandleLogin()
     {
@@ -46,7 +80,7 @@
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
-                if (result != null)
+                if (result != null && result.PlayerId > 0)
                 {
                     Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
                     await JSRuntime.InvokeVoidAsync("localStorage.setItem", "PlayerId", result.PlayerId.ToString());

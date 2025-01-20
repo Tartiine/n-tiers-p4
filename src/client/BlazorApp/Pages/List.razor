@@ -5,7 +5,15 @@
 
 <h3 class="text-center my-3">My Games</h3>
 
-@if (isLoading)
+@if (isCheckingSession)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Checking session...</span>
+        </div>
+    </div>
+}
+else if (isLoading)
 {
     <div class="d-flex justify-content-center my-5">
         <div class="spinner-border text-primary" role="status">
@@ -30,7 +38,14 @@ else
                     <span><strong>Status:</strong> @game.Status</span>
                 </div>
                 <div class="d-flex">
-                    <button class="btn btn-primary me-2" @onclick="() => JoinOrCreateGame(game.Id)">Join</button>
+                    @if (game.Status == "AwaitingGuest" && game.HostName != currentPlayerName)
+                    {
+                        <button class="btn btn-primary me-2" @onclick="() => JoinGame(game.Id)">Join</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary me-2" disabled>Not Available</button>
+                    }
                 </div>
             </div>
         }
@@ -38,22 +53,62 @@ else
 }
 
 <div class="text-center mt-4">
-    <button class="btn btn-success" @onclick="() => JoinOrCreateGame(null)">Create Game</button>
+    <button class="btn btn-success" @onclick="CreateGame">Create Game</button>
 </div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-4 text-center" role="alert">
+        @errorMessage
+    </div>
+}
 
 @code {
     private List<GameDto> games = new();
     private string errorMessage;
     private bool isLoading = true;
+    private bool isCheckingSession = true;
+    private string currentPlayerName = "";
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await ValidateSession())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
         await LoadGames();
+    }
+
+    private async Task<bool> ValidateSession()
+    {
+        try
+        {
+            Console.WriteLine("Checking session...");
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+            if (string.IsNullOrEmpty(playerId))
+            {
+                Console.WriteLine("No session found. Redirecting to login.");
+                return false;
+            }
+
+            Console.WriteLine($"Session found! PlayerId: {playerId}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during session validation: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            isCheckingSession = false;
+        }
     }
 
     private async Task<int> GetCurrentPlayerId()
     {
-        // Retrieve PlayerId from local storage
         var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
         if (int.TryParse(playerId, out int id))
         {
@@ -67,11 +122,14 @@ else
         isLoading = true;
         try
         {
+            int currentPlayerId = await GetCurrentPlayerId();
             games = await Http.GetFromJsonAsync<List<GameDto>>("api/game");
+            currentPlayerName = games.FirstOrDefault(g => g.Id == currentPlayerId)?.HostName ?? "Unknown";
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error fetching games: {ex.Message}");
+            errorMessage = "Unable to load games. Please try again later.";
         }
         finally
         {
@@ -79,42 +137,67 @@ else
         }
     }
 
-
-    private async Task JoinOrCreateGame(int? gameId = null)
+    private async Task CreateGame()
     {
         try
         {
-            Console.WriteLine("Attempting to retrieve PlayerId...");
             int currentPlayerId = await GetCurrentPlayerId();
-            Console.WriteLine($"Retrieved PlayerId: {currentPlayerId}");
+            var response = await Http.PostAsJsonAsync($"api/game/create?hostId={currentPlayerId}", new { });
 
-            string url = gameId.HasValue
-                ? $"api/game/joinOrCreate?gameId={gameId.Value}&hostId={currentPlayerId}"
-                : $"api/game/joinOrCreate?hostId={currentPlayerId}";
-
-            Console.WriteLine($"Generated request URL: {url}");
-
-            var response = await Http.GetFromJsonAsync<ApiResponse<GameDto>>(url);
-
-            if (response?.Success == true && response.Data != null)
+            if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Game joined or created successfully. Game ID: {response.Data.Id}");
-                Navigation.NavigateTo($"/game/{response.Data.Id}");
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                if (result?.Success == true)
+                {
+                    Navigation.NavigateTo($"/game/{result.Data.Id}");
+                }
+                else
+                {
+                    errorMessage = result?.Message ?? "Failed to create game.";
+                }
             }
             else
             {
-                errorMessage = response?.Message ?? "Failed to join or create game.";
-                Console.WriteLine($"Error: {errorMessage}");
+                errorMessage = $"Server Error: {response.StatusCode}";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "An error occurred while creating or joining the game.";
+            errorMessage = "An error occurred while creating the game.";
             Console.WriteLine($"Error: {ex.Message}");
         }
     }
 
+    private async Task JoinGame(int gameId)
+    {
+        try
+        {
+            int currentPlayerId = await GetCurrentPlayerId();
+            var response = await Http.PostAsJsonAsync($"api/game/join?gameId={gameId}&guestId={currentPlayerId}", new { });
 
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                if (result?.Success == true)
+                {
+                    Navigation.NavigateTo($"/game/{result.Data.Id}");
+                }
+                else
+                {
+                    errorMessage = result?.Message ?? "Failed to join game.";
+                }
+            }
+            else
+            {
+                errorMessage = $"Server Error: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while joining the game.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
 
     public class ApiResponse<T>
     {

@@ -48,18 +48,39 @@ namespace Api.Controllers
         [HttpPost("{id}/playTurn")]
         public async Task<IActionResult> PlayTurn(int id, [FromBody] PlayTurnRequest request)
         {
-            var response = await _gameService.PlayTurnAsync(id, request.PlayerId, request.Column);
 
-            if (!response.Success)
+            if (request.PlayerId <= 0)
             {
-                return BadRequest(new { Message = response.Message });
+                return BadRequest(new { Success = false, Message = "Invalid PlayerId." });
             }
 
-            return Ok(response.Data);
+            if (request.Column < 0)
+            {
+                return BadRequest(new { Success = false, Message = "Invalid column." });
+            }
+
+            try
+            {
+
+                var response = await _gameService.PlayTurnAsync(id, request.PlayerId, request.Column);
+
+                if (!response.Success)
+                {
+                    return BadRequest(new { Success = false, Message = response.Message });
+                }
+
+                return Ok(new { Success = true, Data = response.Data });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in PlayTurn for Game ID {id}, Player ID {request.PlayerId}, Column {request.Column}: {ex.Message}");
+                return StatusCode(500, new { Success = false, Message = "An error occurred.", Details = ex.Message });
+            }
         }
 
-        [HttpGet("joinOrCreate")]
-        public async Task<IActionResult> JoinOrCreate([FromQuery] int? gameId, [FromQuery] int hostId)
+
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateGame([FromQuery] int hostId)
         {
             if (hostId <= 0)
             {
@@ -70,9 +91,61 @@ namespace Api.Controllers
                 });
             }
 
+            var response = await _gameService.CreateGameAsync(hostId);
+
+            if (!response.Success)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = response.Message
+                });
+            }
+
+            return Ok(new
+            {
+                Success = true,
+                Data = response.Data
+            });
+        }
+
+        [HttpPost("join")]
+        public async Task<IActionResult> JoinGame([FromQuery] int gameId, [FromQuery] int guestId)
+        {
+            if (guestId <= 0)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = "GuestId is required and must be greater than 0."
+                });
+            }
+
+            var response = await _gameService.JoinGameAsync(gameId, guestId);
+
+            if (!response.Success)
+            {
+                return BadRequest(new
+                {
+                    Success = false,
+                    Message = response.Message
+                });
+            }
+
+            return Ok(new
+            {
+                Success = true,
+                Data = response.Data
+            });
+        }
+
+
+        [HttpPost("leave")]
+        public async Task<IActionResult> LeaveGame([FromQuery] int gameId, [FromQuery] int playerId)
+        {
             try
             {
-                var response = await _gameService.JoinOrCreateGameAsync(gameId, hostId);
+                var response = await _gameService.HandlePlayerLeavingAsync(gameId, playerId);
 
                 if (!response.Success)
                 {
@@ -89,27 +162,16 @@ namespace Api.Controllers
                     Data = response.Data
                 });
             }
-            catch (InvalidOperationException ex)
-            {
-
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error: {ex.Message}");
                 return StatusCode(500, new
                 {
                     Success = false,
-                    Message = "An unexpected error occurred.",
-                    Details = ex.Message
+                    Message = "An unexpected error occurred."
                 });
             }
         }
-
-
 
     }
     public class CreateGameRequest
