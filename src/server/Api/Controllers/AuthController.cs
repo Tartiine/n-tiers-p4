@@ -40,8 +40,41 @@ namespace Api.Controllers
                 return StatusCode(500, new { Message = "Internal server error", Details = ex.Message });
             }
         }
-    }
 
+        [HttpGet("{id}/login")]
+        public async Task<IActionResult> GetPlayerLogin(int id)
+        {
+            try
+            {
+                var player = await context.Players
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == id);
+
+                if (player == null)
+                {
+                    return NotFound(new
+                    {
+                        Message = "Player not found"
+                    });
+                }
+
+                return Ok(new
+                {
+                    Message = "Player login fetched successfully",
+                    Login = player.Login
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching player login: {ex.Message}");
+                return StatusCode(500, new
+                {
+                    Message = "Internal server error",
+                    Details = ex.Message
+                });
+            }
+        }
+    }
     public class LoginRequest
     {
         public string Login { get; set; }

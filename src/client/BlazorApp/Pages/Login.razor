@@ -3,7 +3,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
-<h3>Login</h3>
+<h3 class="text-center mt-4">Login</h3>
 
 @if (isCheckingSession)
 {
@@ -15,23 +15,28 @@
 }
 else
 {
-    <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" class="form-control" @bind="username" />
+    <div class="card mx-auto mt-4" style="max-width: 400px; padding: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+        <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" id="username" class="form-control" @bind="username" placeholder="Enter your username" />
+        </div>
+
+        <div class="form-group mt-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" @bind="password" placeholder="Enter your password" />
+        </div>
+
+        <button class="btn btn-primary mt-4 w-100" @onclick="HandleLogin" disabled="@isSubmitting">
+            @(isSubmitting ? "Logging in..." : "Login")
+        </button>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-4 text-center">@errorMessage</div>
+        }
     </div>
-
-    <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" class="form-control" @bind="password" />
-    </div>
-
-    <button class="btn btn-primary mt-3" @onclick="HandleLogin" disabled="@isSubmitting">Login</button>
-
-    @if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <div class="alert alert-danger mt-3">@errorMessage</div>
-    }
 }
+
 
 @code {
     private string username = string.Empty;
@@ -84,7 +89,7 @@ else
                 {
                     Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
                     await JSRuntime.InvokeVoidAsync("localStorage.setItem", "PlayerId", result.PlayerId.ToString());
-                    Navigation.NavigateTo("/list"); 
+                    Navigation.NavigateTo("/list", forceLoad: true);
                 }
                 else
                 {

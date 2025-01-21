@@ -4,72 +4,77 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
 
-<h3>Game</h3>
+<div class="container mt-4">
+    <h3 class="text-center text-primary mb-4">Connect 4</h3>
 
-@if (game == null && errorMessage == null)
-{
-    <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-}else
-{
-    @if (errorMessage != null)
+    @if (game == null && errorMessage == null)
     {
-        <div class="alert alert-danger mt-3" role="alert">
-            @errorMessage
+        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
         </div>
     }
-    <div class="card mt-1">
-        <div class="card-body">
-            <p><strong>Game ID:</strong> @game.Id</p>
-            <p><strong>Host:</strong> @game.HostName</p>
-            <p><strong>Guest:</strong> @game.GuestName</p>
+    else
+    {
+        @if (errorMessage != null)
+        {
+            <div class="alert alert-danger mt-3" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        <div class="card shadow-lg border-0 mb-4">
+            <div class="card-body">
+                <p><strong>Game ID:</strong> @game.Id</p>
+                <p><strong>Host:</strong> <span class="text-success">@game.HostName</span></p>
+                <p><strong>Guest:</strong> <span class="text-primary">@game.GuestName</span></p>
+            </div>
         </div>
-    </div>
 
-    <div class="game-info mt-3">
-        <p><strong>Current Turn:</strong> 
-           @(game.CurrentTurnId == game.HostId ? game.HostName : game.GuestName)
-        </p>
-    </div>
+        <div class="game-info mt-3 text-center">
+            <h5 class="mb-3">Current Turn: 
+                <span class="badge @(game.CurrentTurnId == game.HostId ? "bg-success" : "bg-primary")">
+                    @(game.CurrentTurnId == game.HostId ? game.HostName : game.GuestName)
+                </span>
+            </h5>
+        </div>
 
-    <div class="grid mt-4">
-        @if (game.Grid == null)
-        {
-            <p class="text-danger">Grid is null. Please check if the server response includes the grid.</p>
-        }
-        else if (game.Grid.Cells == null || game.Grid.Cells.Count == 0)
-        {
-            <p class="text-danger">
-                Grid data is missing or invalid.
-                Rows: @game.Grid.Rows, Columns: @game.Grid.Columns, Cell Count: @game.Grid.Cells?.Count
-            </p>
-        }
-        else
-        {
-        <div class="connect-four-grid">
-            @for (int row = 0; row < game.Grid.Rows; row++)
+        <div class="grid-container">
+            @if (game.Grid == null)
             {
-                <div class="grid-row">
-                    @for (int col = 0; col < game.Grid.Columns; col++)
+                <p class="text-danger">Grid is null. Please check if the server response includes the grid.</p>
+            }
+            else if (game.Grid.Cells == null || game.Grid.Cells.Count == 0)
+            {
+                <p class="text-danger">
+                    Grid data is missing or invalid.
+                    Rows: @game.Grid.Rows, Columns: @game.Grid.Columns, Cell Count: @game.Grid.Cells?.Count
+                </p>
+            }
+            else
+            {
+                <div class="connect-four-grid">
+                    @for (int row = 0; row < game.Grid.Rows; row++)
                     {
-                        var currentCol = col; 
-                        var index = row * game.Grid.Columns + currentCol;
-                        var cell = game.Grid.Cells[index];
+                        <div class="grid-row">
+                            @for (int col = 0; col < game.Grid.Columns; col++)
+                            {
+                                var currentCol = col; 
+                                var index = row * game.Grid.Columns + currentCol;
+                                var cell = game.Grid.Cells[index];
 
-                        <div class="grid-cell" data-column="@currentCol" @onclick="() => PlayTurn(currentCol)">
-                            <div class="token" style="background-color: @(cell.Token?.Color ?? "white")"></div>
+                                <div class="grid-cell" data-column="@currentCol" @onclick="() => PlayTurn(currentCol)">
+                                    <div class="token" style="background-color: @(cell.Token?.Color ?? "white")"></div>
+                                </div>
+                            }
                         </div>
                     }
                 </div>
             }
         </div>
-        }
-    </div>
-}
-
+    }
+</div>
 @code {
     [Parameter]
     public int gameId { get; set; }
@@ -138,7 +143,6 @@
             int currentPlayerId = await GetCurrentPlayerId();
             Console.WriteLine($"Current Player ID: {currentPlayerId}, Current Turn ID: {game?.CurrentTurnId}");
 
-            // Ensure the turn is for the current player
             if (currentPlayerId != game?.CurrentTurnId)
             {
                 errorMessage = "It's not your turn!";

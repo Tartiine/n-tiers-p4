@@ -3,12 +3,12 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 
-<h3 class="text-center my-3">My Games</h3>
+<h3 class="text-center my-4 text-primary">Games</h3>
 
 @if (isCheckingSession)
 {
     <div class="d-flex justify-content-center my-5">
-        <div class="spinner-border text-primary" role="status">
+        <div class="spinner-border text-info" role="status">
             <span class="visually-hidden">Checking session...</span>
         </div>
     </div>
@@ -16,36 +16,50 @@
 else if (isLoading)
 {
     <div class="d-flex justify-content-center my-5">
-        <div class="spinner-border text-primary" role="status">
+        <div class="spinner-border text-info" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
 }
 else if (games == null || !games.Any())
 {
-    <p class="text-center text-muted">No games available.</p>
+    <p class="text-center text-muted fst-italic">No games available. Create your first game now!</p>
 }
 else
 {
-    <div class="list-group">
+    <div class="list-group shadow-sm">
         @foreach (var game in games)
         {
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>Game @game.Id</strong><br />
-                    <span><strong>Host:</strong> @game.HostName</span><br />
-                    <span><strong>Guest:</strong> @game.GuestName</span><br />
-                    <span><strong>Status:</strong> @game.Status</span>
-                </div>
-                <div class="d-flex">
-                    @if (game.Status == "AwaitingGuest" && game.HostId != currentPlayerId)
-                    {
-                        <button class="btn btn-primary me-2" @onclick="() => JoinGame(game.Id)">Join</button>
-                    }
-                    else
-                    {
-                        <button class="btn btn-secondary me-2" disabled>Not Available</button>
-                    }
+            <div class="list-group-item list-group-item-action flex-column align-items-start border-0 mb-2 shadow rounded">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1 text-dark">Game <span class="badge bg-primary">#@game.Id</span></h5>
+                        <p class="mb-1"><strong>Host:</strong> <span class="text-primary">@game.HostName</span></p>
+                        <p class="mb-1"><strong>Guest:</strong> <span class="text-secondary">@game.GuestName</span></p>
+                        <p class="mb-0"><strong>Status:</strong> 
+                            <span class="badge @(game.Status == "AwaitingGuest" 
+                                                ? "bg-warning" 
+                                                : game.Status == "Finished" 
+                                                    ? "bg-danger" 
+                                                    : "bg-success")">
+                                @game.Status
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        @if (game.Status == "AwaitingGuest" && game.HostId != currentPlayerId)
+                        {
+                            <button class="btn btn-primary btn-sm me-2" @onclick="() => JoinGame(game.Id)">
+                                Join Game
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary btn-sm me-2" disabled>
+                                Not Available
+                            </button>
+                        }
+                    </div>
                 </div>
             </div>
         }
@@ -53,12 +67,12 @@ else
 }
 
 <div class="text-center mt-4">
-    <button class="btn btn-success" @onclick="CreateGame">Create Game</button>
+    <button class="btn btn-success btn-lg shadow" @onclick="CreateGame">➕ Create Game</button>
 </div>
 
 @if (!string.IsNullOrEmpty(errorMessage))
 {
-    <div class="alert alert-danger mt-4 text-center" role="alert">
+    <div class="alert alert-danger mt-4 text-center shadow-lg" role="alert">
         @errorMessage
     </div>
 }

@@ -1,4 +1,6 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Text.Json
+@inherits LayoutComponentBase
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -6,8 +8,13 @@
 
     <main>
         <div class="top-row px-4 d-flex justify-content-between align-items-center">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            <button class="btn btn-danger btn-sm" @onclick="Logout">Logout</button>
+            @if (!string.IsNullOrEmpty(playerLogin) && !IsLoginPage())
+            {
+                <div class="d-flex align-items-center">
+                    <span class="me-3">Welcome, <strong>@playerLogin</strong></span>
+                </div>
+                <button class="btn btn-danger btn-sm" @onclick="Logout">Logout</button>
+            }
         </div>
 
         <article class="content px-4">
@@ -19,11 +26,78 @@
 @code {
     [Inject] private NavigationManager Navigation { get; set; }
     [Inject] private IJSRuntime JSRuntime { get; set; }
+    [Inject] private HttpClient Http { get; set; }
+
+    private string playerLogin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("Initializing layout...");
+
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+
+            Console.WriteLine($"PlayerId from local storage: {playerId}");
+
+            if (string.IsNullOrEmpty(playerId))
+            {
+                Console.WriteLine("No PlayerId found in local storage.");
+                playerLogin = null;
+                return;
+            }
+
+            var response = await Http.GetFromJsonAsync<PlayerLoginResponse>($"api/auth/{playerId}/login");
+
+            if (response != null && !string.IsNullOrEmpty(response.Login))
+            {
+                playerLogin = response.Login;
+                Console.WriteLine("Player login fetched successfully: " + playerLogin);
+            }
+            else
+            {
+                Console.WriteLine("Failed to fetch player login.");
+                playerLogin = null;
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching player login: {ex.Message}");
+            playerLogin = null;
+        }
+    }
+
 
     private async Task Logout()
     {
+        Console.WriteLine("Logging out...");
         await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "PlayerId");
-
         Navigation.NavigateTo("/login", forceLoad: true);
     }
+
+    private bool IsLoginPage()
+    {
+        Console.WriteLine($"Current page URI: {Navigation.Uri}");
+        return Navigation.Uri.EndsWith("/login", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; }
+        public T Data { get; set; }
+    }
+
+    public class PlayerDto
+    {
+        public string Login { get; set; }
+    }
+
+    public class PlayerLoginResponse
+    {
+        public string Message { get; set; }
+        public string Login { get; set; }
+    }
+
 }
