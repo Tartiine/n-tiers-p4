@@ -80,67 +80,33 @@ namespace Api.Controllers
 
 
         [HttpPost("create")]
-        public async Task<IActionResult> CreateGame([FromQuery] int hostId)
+        public async Task<IActionResult> CreateGame(int hostId)
         {
-            if (hostId <= 0)
-            {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = "HostId is required and must be greater than 0."
-                });
-            }
-
             var response = await _gameService.CreateGameAsync(hostId);
 
             if (!response.Success)
             {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = response.Message
-                });
+                return BadRequest(new { response.Message });
             }
-
-            return Ok(new
-            {
-                Success = true,
-                Data = response.Data
-            });
+            return Ok(new {Success = true, response.Message, data = response.Data });
         }
+
 
         [HttpPost("join")]
         public async Task<IActionResult> JoinGame([FromQuery] int gameId, [FromQuery] int guestId)
         {
-            if (guestId <= 0)
-            {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = "GuestId is required and must be greater than 0."
-                });
-            }
-
             var response = await _gameService.JoinGameAsync(gameId, guestId);
 
             if (!response.Success)
             {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = response.Message
-                });
+                return BadRequest(new { response.Message });
             }
 
-            return Ok(new
-            {
-                Success = true,
-                Data = response.Data
-            });
+            return Ok(new { Success = true, response.Message }); 
         }
 
 
-        [HttpPost("leave")]
+        /*[HttpPost("leave")]
         public async Task<IActionResult> LeaveGame([FromQuery] int gameId, [FromQuery] int playerId)
         {
             try
@@ -171,7 +137,7 @@ namespace Api.Controllers
                     Message = "An unexpected error occurred."
                 });
             }
-        }
+        }*/
 
     }
     public class CreateGameRequest

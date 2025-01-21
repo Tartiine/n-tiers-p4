@@ -33,12 +33,6 @@ namespace Database.Models
             if (Status != GameStatus.InProgress)
                 throw new InvalidOperationException("Cannot play turn when the game is not in progress.");
 
-            if (player != Host && player != Guest)
-                throw new InvalidOperationException("Player is not part of this game.");
-
-            if (column < 0 || column >= Grid.Columns)
-                throw new ArgumentOutOfRangeException(nameof(column), "Column index is out of bounds.");
-
             var token = new Token
             {
                 Color = player == Host ? "Red" : "Yellow"
@@ -47,12 +41,17 @@ namespace Database.Models
             bool success = Grid.DropToken(column, token);
 
             if (!success)
+                throw new InvalidOperationException("Invalid move. The selected column is full.");
+
+            if (Grid.CheckWinCondition(token))
             {
-                throw new InvalidOperationException($"Cannot place token in column {column}. The column is full.");
+                Status = GameStatus.Finished;
             }
 
-            return true;
+            return success;
         }
+
+
 
 
 

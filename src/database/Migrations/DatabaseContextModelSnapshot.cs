@@ -453,7 +453,7 @@ namespace database.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Token");
+                    b.ToTable("Tokens");
                 });
 
             modelBuilder.Entity("Database.Models.Cell", b =>
@@ -466,7 +466,8 @@ namespace database.Migrations
 
                     b.HasOne("Database.Models.Token", "Token")
                         .WithMany()
-                        .HasForeignKey("TokenId");
+                        .HasForeignKey("TokenId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Grid");
 

@@ -19,6 +19,7 @@ namespace Api.Services
                     Id = g.Id,
                     HostName = g.Host.Login,
                     GuestName = g.Guest != null ? g.Guest.Login : "None",
+                    HostId = g.HostId,
                     Status = g.Status.ToString() 
                 })
                 .ToListAsync();
@@ -86,15 +87,16 @@ namespace Api.Services
             };
         }
 
-        public async Task<ServiceResponse<GameDto>> GetGameByIdAsync(int id)
+        public async Task<ServiceResponse<GameDto>> GetGameByIdAsync(int gameId)
         {
-            // Fetch the game, including Host, Guest, Grid, and Cells
+            // Fetch the game and related data
             var game = await _context.Games
                 .Include(g => g.Grid)
                     .ThenInclude(grid => grid.Cells)
+                        .ThenInclude(cell => cell.Token) // Ensure tokens are included
                 .Include(g => g.Host)
                 .Include(g => g.Guest)
-                .FirstOrDefaultAsync(g => g.Id == id);
+                .FirstOrDefaultAsync(g => g.Id == gameId);
 
             if (game == null)
             {
@@ -105,7 +107,19 @@ namespace Api.Services
                 };
             }
 
-            // Map to GameDto including Grid and Cells
+            // Calculate total tokens and determine the current turn
+            var totalTokens = game.Grid.Cells.Count(cell => cell.Token != null);
+            var currentTurnPlayerId = totalTokens % 2 == 0 ? game.HostId : game.GuestId;
+
+            // Debug logs for verification
+            Console.WriteLine($"Total Tokens: {totalTokens}");
+            Console.WriteLine($"Current Turn Player ID: {currentTurnPlayerId}");
+            foreach (var cell in game.Grid.Cells)
+            {
+                Console.WriteLine($"Row: {cell.Row}, Column: {cell.Column}, Token: {cell.Token?.Color ?? "Empty"}");
+            }
+
+            // Map to GameDto and return
             return new ServiceResponse<GameDto>
             {
                 Success = true,
@@ -116,6 +130,7 @@ namespace Api.Services
                     GuestId = game.GuestId,
                     HostName = game.Host?.Login ?? "No host",
                     GuestName = game.Guest?.Login ?? "Waiting for guest...",
+                    CurrentTurnId = (int)currentTurnPlayerId,
                     Status = game.Status.ToString(),
                     Grid = new GridDto
                     {
@@ -123,6 +138,8 @@ namespace Api.Services
                         Columns = game.Grid.Columns,
                         Cells = game.Grid.Cells.Select(cell => new CellDto
                         {
+                            Row = cell.Row,
+                            Column = cell.Column,
                             Token = cell.Token != null ? new TokenDto { Color = cell.Token.Color } : null
                         }).ToList()
                     }
@@ -131,12 +148,13 @@ namespace Api.Services
         }
 
 
+
         public async Task<ServiceResponse<GameDto>> PlayTurnAsync(int gameId, int playerId, int column)
         {
-            // Retrieve the game and related data
             var game = await _context.Games
                 .Include(g => g.Grid)
                     .ThenInclude(grid => grid.Cells)
+                        .ThenInclude(cell => cell.Token)
                 .Include(g => g.Host)
                 .Include(g => g.Guest)
                 .FirstOrDefaultAsync(g => g.Id == gameId);
@@ -155,11 +173,10 @@ namespace Api.Services
                 return new ServiceResponse<GameDto>
                 {
                     Success = false,
-                    Message = "Game is not in progress."
+                    Message = "Game is finished."
                 };
             }
 
-            // Validate the player
             var player = playerId == game.HostId ? game.Host : playerId == game.GuestId ? game.Guest : null;
             if (player == null)
             {
@@ -172,30 +189,22 @@ namespace Api.Services
 
             try
             {
-                // Attempt to play the turn
-                bool success = game.PlayTurn(player, column);
-                if (!success)
-                {
-                    return new ServiceResponse<GameDto>
-                    {
-                        Success = false,
-                        Message = "Invalid move. Column is full."
-                    };
-                }
 
-                // Save changes to the database
+                game.PlayTurn(player, column);
+
                 await _context.SaveChangesAsync();
 
-                // Return the updated game state
+                var totalTokens = game.Grid.Cells.Count(cell => cell.Token != null);
+                var currentTurnPlayerId = totalTokens % 2 == 0 ? game.HostId : game.GuestId;
+
                 return new ServiceResponse<GameDto>
                 {
                     Success = true,
-                    Data = MapToGameDto(game)
+                    Data = MapToGameDto(game, (int)currentTurnPlayerId)
                 };
             }
             catch (InvalidOperationException ex)
             {
-                // Handle errors during the turn
                 return new ServiceResponse<GameDto>
                 {
                     Success = false,
@@ -204,7 +213,6 @@ namespace Api.Services
             }
             catch (Exception ex)
             {
-                // Log unexpected errors
                 Console.WriteLine($"Error in PlayTurnAsync: {ex.Message}");
                 return new ServiceResponse<GameDto>
                 {
@@ -216,23 +224,16 @@ namespace Api.Services
 
 
 
-
-        private static bool CheckWin(Grid grid)
-        {
-            // Implement win-checking logic
-            return false;
-        }
-        public async Task<ServiceResponse<GameDto>> JoinGameAsync(int gameId, int guestId)
+        public async Task<ServiceResponse<string>> JoinGameAsync(int gameId, int guestId)
         {
             var game = await _context.Games
                 .Include(g => g.Grid)
                 .Include(g => g.Host)
-                .Include(g => g.Guest)
                 .FirstOrDefaultAsync(g => g.Id == gameId);
 
             if (game == null)
             {
-                return new ServiceResponse<GameDto>
+                return new ServiceResponse<string>
                 {
                     Success = false,
                     Message = "Game not found."
@@ -241,7 +242,7 @@ namespace Api.Services
 
             if (game.Status != GameStatus.AwaitingGuest)
             {
-                return new ServiceResponse<GameDto>
+                return new ServiceResponse<string>
                 {
                     Success = false,
                     Message = "Game is not available for joining."
@@ -250,7 +251,7 @@ namespace Api.Services
 
             if (game.HostId == guestId)
             {
-                return new ServiceResponse<GameDto>
+                return new ServiceResponse<string>
                 {
                     Success = false,
                     Message = "Host cannot join their own game."
@@ -263,16 +264,17 @@ namespace Api.Services
             _context.Games.Update(game);
             await _context.SaveChangesAsync();
 
-            return new ServiceResponse<GameDto>
+            return new ServiceResponse<string>
             {
                 Success = true,
-                Data = MapToGameDto(game)
+                Message = "Guest joined the game successfully."
             };
         }
 
 
 
-        private static GameDto MapToGameDto(Game game)
+
+        private static GameDto MapToGameDto(Game game, int currentTurnId)
         {
             return new GameDto
             {
@@ -281,6 +283,7 @@ namespace Api.Services
                 GuestId = game.GuestId,
                 HostName = game.Host?.Login ?? "No host",
                 GuestName = game.Guest?.Login ?? "Waiting for guest...",
+                CurrentTurnId = currentTurnId,
                 Status = game.Status.ToString(),
                 Grid = new GridDto
                 {
@@ -288,6 +291,8 @@ namespace Api.Services
                     Columns = game.Grid.Columns,
                     Cells = game.Grid.Cells.Select(cell => new CellDto
                     {
+                        Row = cell.Row,
+                        Column = cell.Column,
                         Token = cell.Token != null ? new TokenDto { Color = cell.Token.Color } : null
                     }).ToList()
                 }
@@ -296,39 +301,44 @@ namespace Api.Services
 
 
 
-        public async Task<ServiceResponse<GameDto>> CreateGameAsync(int hostId)
+
+
+    public async Task<ServiceResponse<int>> CreateGameAsync(int hostId)
+    {
+        var grid = new Grid
         {
-            var grid = new Grid
+            Rows = 6,
+            Columns = 7,
+            Cells = Enumerable.Range(0, 6 * 7).Select(index => new Cell
             {
-                Rows = 6,
-                Columns = 7,
-                Cells = Enumerable.Range(0, 6 * 7).Select(index => new Cell
-                {
-                    Row = index / 7,
-                    Column = index % 7
-                }).ToList()
-            };
+                Row = index / 7,
+                Column = index % 7
+            }).ToList()
+        };
 
-            _context.Grids.Add(grid);
-            await _context.SaveChangesAsync();
+        _context.Grids.Add(grid);
+        await _context.SaveChangesAsync();
 
-            var game = new Game
-            {
-                Grid = grid,
-                HostId = hostId,
-                Status = GameStatus.AwaitingGuest
-            };
+        var game = new Game
+        {
+            Grid = grid,
+            HostId = hostId,
+            Status = GameStatus.AwaitingGuest
+        };
 
-            _context.Games.Add(game);
-            await _context.SaveChangesAsync();
+        _context.Games.Add(game);
+        await _context.SaveChangesAsync();
 
-            return new ServiceResponse<GameDto>
-            {
-                Success = true,
-                Data = MapToGameDto(game)
-            };
-        }
+        return new ServiceResponse<int>
+        {
+            Success = true,
+            Message = "Game created successfully.",
+            Data = game.Id 
+        };
+    }
 
+        
+        /*
         public async Task<ServiceResponse<GameDto>> HandlePlayerLeavingAsync(int gameId, int playerId)
         {
             var game = await _context.Games
@@ -370,7 +380,7 @@ namespace Api.Services
                 Success = true,
                 Data = MapToGameDto(game)
             };
-        }
+        }*/
 
     }
     public class ServiceResponse<T>

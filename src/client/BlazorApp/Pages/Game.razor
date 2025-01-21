@@ -13,21 +13,26 @@
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
-}
-else if (errorMessage != null)
+}else
 {
-    <div class="alert alert-danger mt-3" role="alert">
-        @errorMessage
-    </div>
-}
-else
-{
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger mt-3" role="alert">
+            @errorMessage
+        </div>
+    }
     <div class="card mt-1">
         <div class="card-body">
             <p><strong>Game ID:</strong> @game.Id</p>
             <p><strong>Host:</strong> @game.HostName</p>
             <p><strong>Guest:</strong> @game.GuestName</p>
         </div>
+    </div>
+
+    <div class="game-info mt-3">
+        <p><strong>Current Turn:</strong> 
+           @(game.CurrentTurnId == game.HostId ? game.HostName : game.GuestName)
+        </p>
     </div>
 
     <div class="grid mt-4">
@@ -72,36 +77,32 @@ else
     private GameDto game;
     private string errorMessage;
 
+    private bool isSubmitting = false;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
             int currentPlayerId = await GetCurrentPlayerId();
-
             Console.WriteLine($"Fetching game details for game ID: {gameId}");
-            var jsonResponse = await Http.GetStringAsync($"api/game/{gameId}");
-            Console.WriteLine($"Raw API Response: {jsonResponse}");
 
+            var jsonResponse = await Http.GetStringAsync($"api/game/{gameId}");
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             };
-
             var response = JsonSerializer.Deserialize<ApiResponse<GameDto>>(jsonResponse, options);
 
             if (response?.Success == true && response.Data != null)
             {
-                game = response.Data;
-
-                // Check if the current player is part of the game
+                game = response.Data; 
+                Console.WriteLine($"Game loaded successfully: ID={game.Id}, Current Turn ID={game.CurrentTurnId}");
                 if (currentPlayerId != game.HostId && currentPlayerId != game.GuestId)
                 {
                     Console.WriteLine($"Player {currentPlayerId} is not part of the game. Redirecting to login.");
                     Navigation.NavigateTo("/login", forceLoad: true);
                     return;
                 }
-
-                Console.WriteLine($"Game loaded successfully: ID={game.Id}, Rows={game.Grid?.Rows}, Columns={game.Grid?.Columns}, Cells={game.Grid?.Cells?.Count ?? 0}");
             }
             else
             {
@@ -117,79 +118,82 @@ else
     }
 
 
-        private async Task<int> GetCurrentPlayerId()
+    private async Task<int> GetCurrentPlayerId()
+    {
+        var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+        if (int.TryParse(playerId, out int id))
         {
-            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
-            if (int.TryParse(playerId, out int id))
-            {
-                return id;
-            }
-            throw new Exception("PlayerId not found in local storage");
+            return id;
         }
+        throw new Exception("PlayerId not found in local storage");
+    }
 
-        private bool isSubmitting = false;
-        
-        private async Task PlayTurn(int column)
+    private async Task PlayTurn(int column)
+    {
+        if (isSubmitting) return; 
+        isSubmitting = true;
+
+        try
         {
-            if (isSubmitting) return; // Prevent multiple submissions
-            isSubmitting = true;
+            int currentPlayerId = await GetCurrentPlayerId();
+            Console.WriteLine($"Current Player ID: {currentPlayerId}, Current Turn ID: {game?.CurrentTurnId}");
 
-            try
+            // Ensure the turn is for the current player
+            if (currentPlayerId != game?.CurrentTurnId)
             {
-                if (column < 0 || column > game.Grid?.Columns)
+                errorMessage = "It's not your turn!";
+                Console.WriteLine(errorMessage);
+                return;
+            }
+
+            Console.WriteLine($"Player {currentPlayerId} is attempting to play in column: {column}");
+
+            var response = await Http.PostAsJsonAsync($"api/game/{gameId}/playTurn", new PlayTurnRequest
+            {
+                PlayerId = currentPlayerId,
+                Column = column
+            });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                if (result?.Success == true)
                 {
-                    errorMessage = "Invalid column selected.";
-                    Console.WriteLine($"Error: {errorMessage}");
-                    return;
+                    game = result.Data;
+                    errorMessage = null;
+                    Console.WriteLine($"Turn played successfully. Current Turn ID: {game.CurrentTurnId}, Game Status: {game.Status}");
                 }
-
-                int currentPlayerId = await GetCurrentPlayerId();
-                if (currentPlayerId != game.HostId && currentPlayerId != game.GuestId)
+                else
                 {
-                    errorMessage = "You are not part of this game.";
+                    errorMessage = result?.Message ?? "Failed to play the turn.";
                     Console.WriteLine($"Error: {errorMessage}");
-                    return;
                 }
-
-                Console.WriteLine($"Player {currentPlayerId} is attempting to play in column: {column}");
-
-                var response = await Http.PostAsJsonAsync($"api/game/{gameId}/playTurn", new PlayTurnRequest
+            }
+            else
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                if (result?.Message != null)
                 {
-                    PlayerId = currentPlayerId,
-                    Column = column
-                });
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
-                    if (result?.Success == true)
-                    {
-                        game = result.Data;
-                        Console.WriteLine($"Turn played successfully. Updated game status: {game.Status}");
-                        errorMessage = null;
-                    }
-                    else
-                    {
-                        errorMessage = result?.Message ?? "Failed to play the turn. An unknown error occurred.";
-                        Console.WriteLine($"Error: {errorMessage}");
-                    }
+                    errorMessage = result.Message;
                 }
                 else
                 {
                     errorMessage = $"Server returned error code: {response.StatusCode}.";
-                    Console.WriteLine($"Server Error: {errorMessage}");
                 }
+                Console.WriteLine($"Error: {errorMessage}");
             }
-            catch (Exception ex)
-            {
-                errorMessage = "An error occurred while playing the turn.";
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-            finally
-            {
-                isSubmitting = false;
-            }
+
         }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while playing the turn.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
 
 
     public class ApiResponse<T>
@@ -208,6 +212,7 @@ else
         public GridDto Grid { get; set; }
         public int HostId { get; set; }
         public int? GuestId { get; set; }
+        public int CurrentTurnId { get; set; } 
     }
 
     public class GridDto

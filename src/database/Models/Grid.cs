@@ -9,6 +9,7 @@ namespace Database.Models
         public List<Cell> Cells { get; set; } = new List<Cell>();
 
         public Grid() { }
+        public event Action<string> OnLog;
 
         public Grid(int rows, int columns)
         {
@@ -27,17 +28,18 @@ namespace Database.Models
 
         public bool DropToken(int column, Token token)
         {
-
             for (int row = Rows - 1; row >= 0; row--)
             {
                 var cell = Cells.FirstOrDefault(c => c.Row == row && c.Column == column);
                 if (cell != null && cell.Token == null)
                 {
                     cell.Token = token;
+                    Console.WriteLine($"Token placed at Row: {row}, Column: {column}");
                     return true;
                 }
             }
 
+            Console.WriteLine($"Column {column} is full. Cannot place token.");
             return false;
         }
 

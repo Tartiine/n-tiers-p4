@@ -9,5 +9,6 @@ namespace Api.Dtos
         public string GuestName { get; set; }
         public string Status { get; set; }
         public GridDto Grid { get; set; }
+        public int CurrentTurnId { get; set; }     
     }
 }
