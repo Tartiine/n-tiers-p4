@@ -15,3 +15,8 @@ Pour supprimer la base de données et revenir à 0 :
 
 
 Pour lancer le projet, il suffit juste de lancer le ./run (bash ou PS)
+
+Pour debugger l'application, vous pouvez utiliser les deux paires d'utilisateur :
+
+ - `testuser` : `testpassword`
+ - `guestuser`: `guestpassword`
