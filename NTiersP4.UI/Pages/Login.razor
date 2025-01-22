@@ -1,0 +1,116 @@
+@page "/login"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h3 class="text-center mt-4">Login</h3>
+
+@if (isCheckingSession)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Checking session...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mx-auto mt-4" style="max-width: 400px; padding: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);">
+        <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" id="username" class="form-control" @bind="username" placeholder="Enter your username" />
+        </div>
+
+        <div class="form-group mt-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" @bind="password" placeholder="Enter your password" />
+        </div>
+
+        <button class="btn btn-primary mt-4 w-100" @onclick="HandleLogin" disabled="@isSubmitting">
+            @(isSubmitting ? "Logging in..." : "Login")
+        </button>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-4 text-center">@errorMessage</div>
+        }
+    </div>
+}
+
+
+@code {
+    private string username = string.Empty;
+    private string password = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isSubmitting = false;
+    private bool isCheckingSession = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Console.WriteLine("Checking session...");
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+            if (!string.IsNullOrEmpty(playerId))
+            {
+                Console.WriteLine($"Session found! Redirecting to /list. PlayerId: {playerId}");
+                Navigation.NavigateTo("/list");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error while checking session: {ex.Message}");
+        }
+        finally
+        {
+            isCheckingSession = false;
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = string.Empty; // Clear any previous error
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Username and password cannot be empty.";
+            return;
+        }
+
+        isSubmitting = true; 
+        try
+        {
+            var request = new { Login = username, Password = password };
+            var response = await Http.PostAsJsonAsync("api/auth/login", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+                if (result != null && result.PlayerId > 0)
+                {
+                    Console.WriteLine($"Login successful! PlayerId: {result.PlayerId}");
+                    await JSRuntime.InvokeVoidAsync("localStorage.setItem", "PlayerId", result.PlayerId.ToString());
+                    Navigation.NavigateTo("/list", forceLoad: true);
+                }
+                else
+                {
+                    errorMessage = "Invalid server response.";
+                }
+            }
+            else
+            {
+                errorMessage = $"Login failed: {response.StatusCode}";
+                var serverMessage = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Server Response: {serverMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred. Please try again.";
+            Console.WriteLine($"Exception: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

@@ -1,0 +1,217 @@
+@page "/list"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<h3 class="text-center my-4 text-primary">Games</h3>
+
+@if (isCheckingSession)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-info" role="status">
+            <span class="visually-hidden">Checking session...</span>
+        </div>
+    </div>
+}
+else if (isLoading)
+{
+    <div class="d-flex justify-content-center my-5">
+        <div class="spinner-border text-info" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (games == null || !games.Any())
+{
+    <p class="text-center text-muted fst-italic">No games available. Create your first game now!</p>
+}
+else
+{
+    <div class="list-group shadow-sm">
+        @foreach (var game in games)
+        {
+            <div class="list-group-item list-group-item-action flex-column align-items-start border-0 mb-2 shadow rounded">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1 text-dark">Game <span class="badge bg-primary">#@game.Id</span></h5>
+                        <p class="mb-1"><strong>Host:</strong> <span class="text-primary">@game.HostName</span></p>
+                        <p class="mb-1"><strong>Guest:</strong> <span class="text-secondary">@game.GuestName</span></p>
+                        <p class="mb-0"><strong>Status:</strong> 
+                            <span class="badge @(game.Status == "AwaitingGuest" 
+                                                ? "bg-warning" 
+                                                : game.Status == "Finished" 
+                                                    ? "bg-danger" 
+                                                    : "bg-success")">
+                                @game.Status
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        @if (game.Status == "AwaitingGuest" && game.HostId != currentPlayerId)
+                        {
+                            <button class="btn btn-primary btn-sm me-2" @onclick="() => JoinGame(game.Id)">
+                                Join Game
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary btn-sm me-2" disabled>
+                                Not Available
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<div class="text-center mt-4">
+    <button class="btn btn-success btn-lg shadow" @onclick="CreateGame">➕ Create Game</button>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger mt-4 text-center shadow-lg" role="alert">
+        @errorMessage
+    </div>
+}
+
+@code {
+    private List<GameDto> games = new();
+    private string errorMessage;
+    private bool isLoading = true;
+    private bool isCheckingSession = true;
+    private int currentPlayerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await ValidateSession())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        currentPlayerId = await GetCurrentPlayerId();
+        await LoadGames();
+    }
+
+    private async Task<bool> ValidateSession()
+    {
+        try
+        {
+            Console.WriteLine("Checking session...");
+            var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+            if (string.IsNullOrEmpty(playerId))
+            {
+                Console.WriteLine("No session found. Redirecting to login.");
+                return false;
+            }
+
+            Console.WriteLine($"Session found! PlayerId: {playerId}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during session validation: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            isCheckingSession = false;
+        }
+    }
+
+    private async Task<int> GetCurrentPlayerId()
+    {
+        var playerId = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "PlayerId");
+        if (int.TryParse(playerId, out int id))
+        {
+            return id;
+        }
+        throw new Exception("PlayerId not found in local storage");
+    }
+
+    private async Task LoadGames()
+    {
+        isLoading = true;
+        try
+        {
+            games = await Http.GetFromJsonAsync<List<GameDto>>("api/game");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching games: {ex.Message}");
+            errorMessage = "Unable to load games. Please try again later.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateGame()
+    {
+        try
+        {
+            int currentPlayerId = await GetCurrentPlayerId();
+            var response = await Http.PostAsJsonAsync($"api/game/create?hostId={currentPlayerId}", new { });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<int>>(); 
+                Console.WriteLine(result.Data);
+                if (result?.Success == true) 
+                {
+                    Navigation.NavigateTo($"/game/{result.Data}"); 
+                }
+                else
+                {
+                    errorMessage = result?.Message ?? "Failed to create game.";
+                    Console.WriteLine($"Error: {errorMessage}");
+                }
+            }
+            else
+            {
+                errorMessage = $"Server Error: {response.StatusCode}";
+                Console.WriteLine($"Server Error: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while creating the game.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private async Task JoinGame(int gameId)
+    {
+        try
+        {
+            int currentPlayerId = await GetCurrentPlayerId();
+            var response = await Http.PostAsJsonAsync($"api/game/join?gameId={gameId}&guestId={currentPlayerId}", new { });
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponse<GameDto>>();
+                if (result?.Success == true)
+                {
+                    Navigation.NavigateTo($"/game/{gameId}");
+                }
+                else
+                {
+                    errorMessage = result?.Message ?? "Failed to join game.";
+                }
+            }
+            else
+            {
+                errorMessage = $"Server Error: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while joining the game.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+}
