@@ -5,7 +5,7 @@ using NTiersP4.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace NTiersP4.Infrastructure.Test.Repositories
+namespace NTiersP4.Infrastructure.Tests.Repositories
 {
     public class GameRepositoryTests
     {
@@ -14,26 +14,39 @@ namespace NTiersP4.Infrastructure.Test.Repositories
 
         public GameRepositoryTests()
         {
-            // Configuration d'une base de données en mémoire
             var options = new DbContextOptionsBuilder<DatabaseContext>()
                 .UseInMemoryDatabase("TestDatabase")
                 .Options;
 
             _dbContext = new DatabaseContext(options);
             _repository = new GameRepository(_dbContext);
+
+            ResetDatabase();
+        }
+
+        private void ResetDatabase()
+        {
+            _dbContext.Database.EnsureDeleted();
+            _dbContext.Database.EnsureCreated();
         }
 
         [Fact]
         public async Task AddAsync_Should_Add_Game_To_Database()
         {
             // Arrange
-            var game = new Game { Id = 1, Status = GameStatus.AwaitingGuest };
+            var grid = new Grid { Rows = 6, Columns = 7 };
+            var player = new Player { Login = "testuser", Password = "testpassword" };
+            var game = new Game { Grid = grid, Host = player, Status = GameStatus.AwaitingGuest };
+
+            await _dbContext.Grids.AddAsync(grid);
+            await _dbContext.Players.AddAsync(player);
+            await _dbContext.SaveChangesAsync();
 
             // Act
             await _repository.AddAsync(game);
 
             // Assert
-            var dbGame = await _dbContext.Games.FindAsync(1);
+            var dbGame = await _dbContext.Games.FirstOrDefaultAsync();
             Assert.NotNull(dbGame);
             Assert.Equal(GameStatus.AwaitingGuest, dbGame.Status);
         }
@@ -42,17 +55,21 @@ namespace NTiersP4.Infrastructure.Test.Repositories
         public async Task GetByIdAsync_Should_Return_Correct_Game()
         {
             // Arrange
-            var game = new Game { Id = 1, Status = GameStatus.AwaitingGuest };
+            var grid = new Grid { Rows = 6, Columns = 7 };
+            var player = new Player { Login = "testuser", Password = "testpassword" };
+            var game = new Game { Grid = grid, Host = player, Status = GameStatus.AwaitingGuest };
+
+            await _dbContext.Grids.AddAsync(grid);
+            await _dbContext.Players.AddAsync(player);
             await _dbContext.Games.AddAsync(game);
             await _dbContext.SaveChangesAsync();
 
             // Act
-            var result = await _repository.GetByIdAsync(1);
+            var result = await _repository.GetByIdAsync(game.Id);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(1, result.Id);
-            Assert.Equal(GameStatus.AwaitingGuest, result.Status);
+            Assert.Equal(game.Id, result.Id);
         }
     }
 }

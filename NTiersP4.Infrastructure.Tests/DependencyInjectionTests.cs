@@ -3,7 +3,7 @@ using NTiersP4.Domain.Repositories;
 using NTiersP4.Infrastructure;
 using Xunit;
 
-namespace NTiersP4.Infrastructure.Test
+namespace NTiersP4.Infrastructure.Tests
 {
     public class DependencyInjectionTests
     {

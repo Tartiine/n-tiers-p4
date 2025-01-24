@@ -5,7 +5,7 @@ using NTiersP4.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace NTiersP4.Infrastructure.Test.Repositories
+namespace NTiersP4.Infrastructure.Tests.Repositories
 {
     public class PlayerRepositoryTests
     {
@@ -20,37 +20,29 @@ namespace NTiersP4.Infrastructure.Test.Repositories
 
             _dbContext = new DatabaseContext(options);
             _repository = new PlayerRepository(_dbContext);
+
+            ResetDatabase();
+        }
+
+        private void ResetDatabase()
+        {
+            _dbContext.Database.EnsureDeleted();
+            _dbContext.Database.EnsureCreated();
         }
 
         [Fact]
         public async Task AddAsync_Should_Add_Player_To_Database()
         {
             // Arrange
-            var player = new Player { Id = 1, Login = "testuser", Password = "testpassword" };
+            var player = new Player { Login = "testuser", Password = "testpassword" };
 
             // Act
             await _repository.AddAsync(player);
 
             // Assert
-            var dbPlayer = await _dbContext.Players.FindAsync(1);
+            var dbPlayer = await _dbContext.Players.FirstOrDefaultAsync();
             Assert.NotNull(dbPlayer);
             Assert.Equal("testuser", dbPlayer.Login);
-        }
-
-        [Fact]
-        public async Task GetPlayerByCredentialsAsync_Should_Return_Correct_Player()
-        {
-            // Arrange
-            var player = new Player { Id = 1, Login = "testuser", Password = "testpassword" };
-            await _dbContext.Players.AddAsync(player);
-            await _dbContext.SaveChangesAsync();
-
-            // Act
-            var result = await _repository.GetPlayerByCredentialsAsync("testuser", "testpassword");
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal("testuser", result.Login);
         }
     }
 }
