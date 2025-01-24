@@ -11,11 +11,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiersP4.Domain", "NTiersP4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiersP4.Infrastructure", "NTiersP4.Infrastructure\NTiersP4.Infrastructure.csproj", "{A9F20392-861D-416A-98A8-9572883466FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiers.API.Tests", "NTiers.API.Tests\NTiers.API.Tests.csproj", "{58F900FD-53AA-4C28-A5A7-EEDA456EDAB4}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiersP4.Domain.Tests", "NTiersP4.Domain.Tests\NTiersP4.Domain.Tests.csproj", "{126A4D24-4242-4D17-8519-CB3281AFC1B1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiersP4.Infrastructure.Tests", "NTiersP4.Infrastructure.Tests\NTiersP4.Infrastructure.Tests.csproj", "{13B09D3B-5A03-43A9-AC68-307A65934808}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NTiersP4.API.Tests", "NTiersP4.API.Tests\NTiersP4.API.Tests.csproj", "{3D85001F-8018-4319-9040-6E2BE6A7E5E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,10 +39,6 @@ Global
 		{A9F20392-861D-416A-98A8-9572883466FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A9F20392-861D-416A-98A8-9572883466FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A9F20392-861D-416A-98A8-9572883466FC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{58F900FD-53AA-4C28-A5A7-EEDA456EDAB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{58F900FD-53AA-4C28-A5A7-EEDA456EDAB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{58F900FD-53AA-4C28-A5A7-EEDA456EDAB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{58F900FD-53AA-4C28-A5A7-EEDA456EDAB4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{126A4D24-4242-4D17-8519-CB3281AFC1B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{126A4D24-4242-4D17-8519-CB3281AFC1B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{126A4D24-4242-4D17-8519-CB3281AFC1B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -51,6 +47,10 @@ Global
 		{13B09D3B-5A03-43A9-AC68-307A65934808}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{13B09D3B-5A03-43A9-AC68-307A65934808}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{13B09D3B-5A03-43A9-AC68-307A65934808}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D85001F-8018-4319-9040-6E2BE6A7E5E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D85001F-8018-4319-9040-6E2BE6A7E5E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D85001F-8018-4319-9040-6E2BE6A7E5E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D85001F-8018-4319-9040-6E2BE6A7E5E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
